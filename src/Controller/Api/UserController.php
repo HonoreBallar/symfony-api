@@ -68,7 +68,7 @@ final class UserController extends ApiController
         return $this->success($user, 'Utilisateur créé. Un e-mail de confirmation lui a été envoyé.', Response::HTTP_CREATED, context: self::CONTEXT);
     }
 
-    #[Route('/{id}', name: 'show',requirements: ['id' => Requirement::UUID], methods: ['GET'])]
+    #[Route('/{id}', name: 'show', requirements: ['id' => Requirement::UUID], methods: ['GET'])]
     #[SuccessResponse(Response::HTTP_OK, 'User details', User::class, ['user:read'])]
     #[ErrorResponse(Response::HTTP_NOT_FOUND, 'User not found')]
     public function show(#[MapEntity(message: self::NOT_FOUND)] User $user): JsonResponse

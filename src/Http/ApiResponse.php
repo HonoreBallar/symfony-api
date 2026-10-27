@@ -19,12 +19,17 @@ final class ApiResponse
 
     /**
      * @param list<array{field: string, message: string}> $errors
+     * @param array<string, string|list<string>>          $headers
      */
     public static function error(string $message, int $status, array $errors = [], array $headers = []): JsonResponse
     {
         return self::create(['success' => false, 'message' => $message, 'errors' => $errors], $status, $headers);
     }
 
+    /**
+     * @param array<string, mixed>               $payload
+     * @param array<string, string|list<string>> $headers
+     */
     private static function create(array $payload, int $status, array $headers = []): JsonResponse
     {
         return (new JsonResponse($payload, $status, $headers))->setEncodingOptions(self::JSON_OPTIONS);
