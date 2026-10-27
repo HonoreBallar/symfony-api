@@ -3,6 +3,7 @@
 namespace App\EventListener;
 
 use App\Http\ApiResponse;
+use App\Routing\MalformedUuidDetector;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
@@ -22,6 +23,11 @@ use Symfony\Component\Validator\Exception\ValidationFailedException;
 #[AsEventListener(priority: -64)]
 final class ApiExceptionListener
 {
+    public function __construct(
+        private readonly MalformedUuidDetector $malformedUuidDetector,
+    ) {
+    }
+
     public function __invoke(ExceptionEvent $event): void
     {
         if (!str_starts_with($event->getRequest()->getPathInfo(), '/api')) {
@@ -38,6 +44,10 @@ final class ApiExceptionListener
             $errors = $this->formatViolations($exception->getPrevious()->getViolations());
         } elseif ($exception->getPrevious() instanceof UnexpectedValueException) {
             $message = "Le corps de la requête n'est pas un JSON valide.";
+        } elseif ($exception->getPrevious() instanceof ResourceNotFoundException
+            && null !== $parameter = $this->malformedUuidDetector->detect($event->getRequest()->getPathInfo())) {
+            $message = "Ressource introuvable : l'identifiant doit être un UUID valide.";
+            $errors = [['field' => $parameter, 'message' => 'UUID attendu, par exemple 01a17926-27bd-787f-b11e-3096660342b7.']];
         } elseif ($exception->getPrevious() instanceof ResourceNotFoundException) {
             $message = 'Route introuvable.';
         } elseif ($exception instanceof MethodNotAllowedHttpException) {

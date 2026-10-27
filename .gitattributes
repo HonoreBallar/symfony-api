@@ -1,0 +1,2 @@
+# Always LF in the working tree, whatever core.autocrlf says: @Symfony (php-cs-fixer) and the Linux containers expect it
+* text=auto eol=lf
