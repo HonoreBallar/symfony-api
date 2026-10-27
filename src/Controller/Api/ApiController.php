@@ -13,11 +13,19 @@ use Symfony\Component\HttpFoundation\Response;
  */
 abstract class ApiController extends AbstractController
 {
+    /**
+     * @param array<string, string|list<string>> $headers
+     * @param array<string, mixed>               $context
+     */
     protected function json(mixed $data, int $status = 200, array $headers = [], array $context = []): JsonResponse
     {
         return parent::json($data, $status, $headers, $context + ['json_encode_options' => ApiResponse::JSON_OPTIONS]);
     }
 
+    /**
+     * @param array<string, string|list<string>> $headers
+     * @param array<string, mixed>               $context
+     */
     protected function success(mixed $data, string $message, int $status = Response::HTTP_OK, array $headers = [], array $context = []): JsonResponse
     {
         return $this->json([
@@ -27,6 +35,12 @@ abstract class ApiController extends AbstractController
         ], $status, $headers, $context);
     }
 
+    /**
+     * @template T of object
+     *
+     * @param Paginator<T>         $paginator
+     * @param array<string, mixed> $context
+     */
     protected function paginated(Paginator $paginator, int $page, int $pageSize, string $message, array $context = []): JsonResponse
     {
         $totalItems = \count($paginator);
