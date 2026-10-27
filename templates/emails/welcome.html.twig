@@ -1,0 +1,14 @@
+{% extends 'emails/layout.html.twig' %}
+
+{% block title %}Bienvenue sur Symfony API{% endblock %}
+
+{% block body %}
+    <h1 style="font-size:20px;">Bienvenue {{ name }} !</h1>
+    <p>Votre adresse e-mail est confirmée et votre compte est prêt. Vous pouvez dès maintenant vous connecter :</p>
+    <p style="margin:24px 0;">
+        <a href="{{ url }}" style="background:#2563eb;color:#ffffff;padding:12px 20px;border-radius:6px;text-decoration:none;">Se connecter</a>
+    </p>
+    <p style="font-size:13px;color:#52525b;">Si vous avez oublié votre mot de passe, utilisez la fonction « Mot de passe oublié » pour en choisir un nouveau.</p>
+{% endblock %}
+
+{% block footer %}{% endblock %}

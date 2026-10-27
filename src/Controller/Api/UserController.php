@@ -3,12 +3,14 @@
 namespace App\Controller\Api;
 
 use App\Dto\PaginationQuery;
+use App\Dto\UserCreateInput;
 use App\Dto\UserUpdateInput;
 use App\Entity\User;
 use App\OpenApi\ErrorResponse;
 use App\OpenApi\SuccessResponse;
 use App\Repository\ApiTokenRepository;
 use App\Repository\UserRepository;
+use App\Service\UserRegistration;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -37,6 +39,7 @@ final class UserController extends ApiController
         private readonly UserRepository $users,
         private readonly ApiTokenRepository $apiTokens,
         private readonly EntityManagerInterface $em,
+        private readonly UserRegistration $registration,
     ) {
     }
 
@@ -54,7 +57,18 @@ final class UserController extends ApiController
         );
     }
 
-    #[Route('/{id}', name: 'show', requirements: ['id' => Requirement::UUID], methods: ['GET'])]
+    #[Route('', name: 'create', methods: ['POST'])]
+    #[SuccessResponse(Response::HTTP_CREATED, 'User created (ROLE_USER by default), a confirmation e-mail has been sent', User::class, ['user:read'])]
+    #[ErrorResponse(Response::HTTP_CONFLICT, 'E-mail already used')]
+    #[ErrorResponse(Response::HTTP_UNPROCESSABLE_ENTITY, 'Validation failed')]
+    public function create(#[MapRequestPayload] UserCreateInput $input): JsonResponse
+    {
+        $user = $this->registration->register($input->name, $input->email, $input->password, $input->roles);
+
+        return $this->success($user, 'Utilisateur créé. Un e-mail de confirmation lui a été envoyé.', Response::HTTP_CREATED, context: self::CONTEXT);
+    }
+
+    #[Route('/{id}', name: 'show',requirements: ['id' => Requirement::UUID], methods: ['GET'])]
     #[SuccessResponse(Response::HTTP_OK, 'User details', User::class, ['user:read'])]
     #[ErrorResponse(Response::HTTP_NOT_FOUND, 'User not found')]
     public function show(#[MapEntity(message: self::NOT_FOUND)] User $user): JsonResponse

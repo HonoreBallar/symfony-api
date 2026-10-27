@@ -12,9 +12,11 @@
                     <tr>
                         <td>
                             {% block body %}{% endblock %}
+                            {% block footer %}
                             <p style="margin-top:32px;font-size:12px;color:#71717a;">
                                 Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.
                             </p>
+                            {% endblock %}
                         </td>
                     </tr>
                 </table>
