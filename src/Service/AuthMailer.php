@@ -38,6 +38,16 @@ final readonly class AuthMailer
             ->context(['name' => $user->getName(), 'url' => $signedUrl]));
     }
 
+    public function sendWelcome(User $user): void
+    {
+        $this->mailer->send((new TemplatedEmail())
+            ->from(new Address($this->from, 'Symfony API'))
+            ->to(new Address($user->getEmail(), $user->getName()))
+            ->subject('Bienvenue sur Symfony API')
+            ->htmlTemplate('emails/welcome.html.twig')
+            ->context(['name' => $user->getName(), 'url' => rtrim($this->frontendUrl, '/')]));
+    }
+
     public function sendPasswordReset(User $user, string $plainToken): void
     {
         $url = rtrim($this->frontendUrl, '/').'/reset-password?token='.$plainToken;

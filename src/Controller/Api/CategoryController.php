@@ -10,6 +10,7 @@ use App\OpenApi\ErrorResponse;
 use App\OpenApi\SuccessResponse;
 use App\Repository\CategoryRepository;
 use App\Service\CategoryCoverStorage;
+use App\Validator\CoverImage;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -24,7 +25,6 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Validator\Constraints as Assert;
 
 #[Route('/api/categories', name: 'api_category_', format: 'json')]
 #[OA\Tag(name: 'Category')]
@@ -65,14 +65,19 @@ final class CategoryController extends ApiController
     #[Route('', name: 'create', methods: ['POST'])]
     #[IsGranted(User::ROLE_ADMIN)]
     #[ErrorResponse(Response::HTTP_FORBIDDEN, 'Admins only')]
-    #[SuccessResponse(Response::HTTP_CREATED, 'Category created', Category::class, ['category:read'])]
+    #[SuccessResponse(Response::HTTP_CREATED, 'Category created. Send JSON, or multipart/form-data to attach a "cover" image at the same time', Category::class, ['category:read'])]
     #[ErrorResponse(Response::HTTP_CONFLICT, 'A category with this name already exists')]
-    #[ErrorResponse(Response::HTTP_UNPROCESSABLE_ENTITY, 'Validation failed')]
-    public function create(#[MapRequestPayload] CategoryInput $input): JsonResponse
-    {
+    #[ErrorResponse(Response::HTTP_UNPROCESSABLE_ENTITY, 'Validation failed (fields or cover image: JPEG, PNG or WebP, 5 MB max)')]
+    public function create(
+        #[MapRequestPayload] CategoryInput $input,
+        #[MapUploadedFile([new CoverImage()])] ?UploadedFile $cover = null,
+    ): JsonResponse {
         $this->assertNameAvailable($input->name);
 
         $category = new Category($input->name, $input->description);
+        if (null !== $cover) {
+            $this->coverStorage->replace($category, $cover);
+        }
         $this->em->persist($category);
         $this->em->flush();
 
@@ -120,13 +125,7 @@ final class CategoryController extends ApiController
     #[ErrorResponse(Response::HTTP_UNPROCESSABLE_ENTITY, 'Missing or invalid image (JPEG, PNG or WebP, 5 MB max)')]
     public function uploadCover(
         #[MapEntity(message: self::NOT_FOUND)] Category $category,
-        #[MapUploadedFile([
-            new Assert\Image(
-                maxSize: '5M',
-                mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-                mimeTypesMessage: 'Formats acceptés : JPEG, PNG ou WebP.',
-            ),
-        ])]
+        #[MapUploadedFile([new CoverImage()])]
         ?UploadedFile $cover,
     ): JsonResponse {
         // Constraints are skipped when no file is sent at all.

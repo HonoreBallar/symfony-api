@@ -1,0 +1,26 @@
+framework:
+    messenger:
+        # Messages that still fail after every retry land here: list them with messenger:failed:show, replay with messenger:failed:retry
+        failure_transport: failed
+
+        transports:
+            # https://symfony.com/doc/current/messenger.html#transport-configuration
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                retry_strategy:
+                    max_retries: 3
+                    delay: 10000 # 10 s, then 20 s, then 40 s
+                    multiplier: 2
+            failed: 'doctrine://default?queue_name=failed'
+            sync: 'sync://'
+
+        routing:
+            # E-mails are sent by the worker (the "worker" service in compose.yaml), not during the HTTP request
+            Symfony\Component\Mailer\Messenger\SendEmailMessage: async
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                # Queued messages stay in memory: tests assert on them with assertQueuedEmailCount()
+                async: 'in-memory://'

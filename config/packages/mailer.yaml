@@ -1,3 +1,9 @@
 framework:
     mailer:
         dsn: '%env(MAILER_DSN)%'
+
+when@test:
+    framework:
+        mailer:
+            # Messages are only collected, so tests can assert on them without a running SMTP server
+            dsn: 'null://null'

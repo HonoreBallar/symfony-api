@@ -13,6 +13,7 @@ use App\Repository\ApiTokenRepository;
 use App\Repository\PasswordResetTokenRepository;
 use App\Repository\UserRepository;
 use App\Service\AuthMailer;
+use App\Service\UserRegistration;
 use Doctrine\ORM\EntityManagerInterface;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use Nelmio\ApiDocBundle\Attribute\Security;
@@ -23,7 +24,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
@@ -41,6 +41,7 @@ final class AuthController extends ApiController
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly EntityManagerInterface $em,
         private readonly AuthMailer $mailer,
+        private readonly UserRegistration $registration,
     ) {
     }
 
@@ -80,16 +81,7 @@ final class AuthController extends ApiController
     #[ErrorResponse(Response::HTTP_UNPROCESSABLE_ENTITY, 'Validation failed')]
     public function register(#[MapRequestPayload] RegisterInput $input): JsonResponse
     {
-        if (null !== $this->users->findOneByEmail($input->email)) {
-            throw new ConflictHttpException('Un compte existe déjà avec cette adresse e-mail.');
-        }
-
-        $user = (new User($input->name, $input->email))->setRoles([User::ROLE_USER]);
-        $user->setPassword($this->passwordHasher->hashPassword($user, $input->password));
-
-        $this->em->persist($user);
-        $this->mailer->sendEmailVerification($user);
-        $this->em->flush();
+        $user = $this->registration->register($input->name, $input->email, $input->password);
 
         return $this->success($user, 'Compte créé. Consultez vos e-mails pour confirmer votre adresse.', Response::HTTP_CREATED, context: self::CONTEXT);
     }
@@ -112,9 +104,7 @@ final class AuthController extends ApiController
             throw new BadRequestHttpException('Lien de confirmation invalide ou expiré.');
         }
 
-        // Only records the confirmation: never re-enables an account disabled by an admin.
-        $user->markEmailAsVerified();
-        $this->em->flush();
+        $this->registration->confirmEmail($user);
 
         return $this->success($user, 'Adresse e-mail confirmée. Vous pouvez vous connecter.', context: self::CONTEXT);
     }
