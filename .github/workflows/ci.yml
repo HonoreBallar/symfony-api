@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push on the same branch or PR cancels the run in progress
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Lint & static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup
+
+      - name: Restore PHPStan and PHP CS Fixer caches
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            var/phpstan
+            var/.php-cs-fixer.cache
+          key: qa-${{ runner.os }}-${{ github.sha }}
+          restore-keys: qa-${{ runner.os }}-
+
+      - run: composer audit
+      - run: composer ci:lint
+      - run: composer ci:cs
+      - run: composer ci:stan -- --error-format=github
+
+  tests:
+    name: Tests
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      database:
+        # Keep in sync with compose.yaml
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: app
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -d app -U app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # The test environment appends "_test" to the database name (config/packages/doctrine.yaml)
+      DATABASE_URL: postgresql://app:app@127.0.0.1:5432/app?serverVersion=18&charset=utf8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup
+
+      - name: Create the test database
+        run: bin/console doctrine:database:create --env=test --if-not-exists
+
+      - name: Check that every migration can be rolled back
+        run: |
+          bin/console doctrine:migrations:migrate --env=test --no-interaction
+          bin/console doctrine:migrations:migrate first --env=test --no-interaction
+          bin/console doctrine:migrations:migrate --env=test --no-interaction
+
+      - name: Check that the migrations match the entity mapping
+        run: bin/console doctrine:schema:validate --env=test
+
+      - run: composer ci:test -- --log-junit var/junit.xml
+
+      - name: Upload the test report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: junit
+          path: var/junit.xml
