@@ -1,0 +1,37 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Symfony API
+            description: REST API (Symfony 8.1)
+            version: 1.0.0
+        # Click "Authorize" in Swagger UI and paste the token returned by POST /api/auth/login
+        security:
+            - Bearer: []
+        components:
+            securitySchemes:
+                Bearer:
+                    type: http
+                    scheme: bearer
+            schemas:
+                Pagination:
+                    type: object
+                    properties:
+                        page: { type: integer, example: 1 }
+                        pageSize: { type: integer, example: 10 }
+                        totalItems: { type: integer, example: 25 }
+                        totalPages: { type: integer, example: 3 }
+                Error:
+                    type: object
+                    properties:
+                        success: { type: boolean, example: false }
+                        message: { type: string, example: 'Les données envoyées sont invalides.' }
+                        errors:
+                            type: array
+                            items:
+                                type: object
+                                properties:
+                                    field: { type: string, example: name }
+                                    message: { type: string, example: 'This value should not be blank.' }
+    areas: # to filter documented areas
+        path_patterns:
+            - ^/api(?!/doc$) # Accepts routes under /api except /api/doc
